@@ -119,6 +119,7 @@ Join PortfolioProject..CovidVaccinations vac
 	On dea.location = vac.location
 	and dea.date = vac.date
 Where dea.continent is NOT NULL
+and dea.location like 'United States'
 Order by 2,3
 
 
@@ -167,8 +168,20 @@ Where dea.continent is NOT NULL
 
 Select *, (RollingPeopleVaccinated/population)*100 as VaccinatedPercentage
 From #Temp_PercentPopulationVaccinated
+Where location like 'United States'
 
 
+
+--Showing Percentage if Population has been Fully Vaccinated
+
+Select vac.location, vac.date, vac.new_vaccinations, vac.people_fully_vaccinated, (vac.people_fully_vaccinated/dea.population) as PercentPopulationFullyVaccinated
+From PortfolioProject..CovidVaccinations vac
+Join PortfolioProject..CovidDeaths dea
+	on vac.location = dea.location
+	and dea.date = vac.date
+Where vac.continent is NOT NULL
+and vac.location like 'Vietnam'
+Order by 1,2
 
 
 --Creating View to store data for later visualization
@@ -208,4 +221,5 @@ From PortfolioProject..CovidDeaths
 --Where location like 'Poland'
 Where continent is NOT NULL
 Group by location
+
 
