@@ -1,0 +1,191 @@
+--For each employee display first name, last name and number of full years at the company (give
+--alias “Years”). Order result descending by “Years”.
+SELECT first_name, last_name, TRUNC(MONTHS_BETWEEN(SYSDATE,hire_date)/12,0) "Years"
+FROM employees
+ORDER BY 3 DESC;
+
+-- Display the first name, last name and hire date in a format like '2019-01-01' (give alias “hired”)
+-- of the employee who works in 'Engineering' department for the shortest time.
+
+--correlated subqery
+SELECT first_name, last_name, TO_CHAR(hire_date,'YYYY-MM-DD') "hired"
+FROM employees e JOIN departments d ON (e.dep_id = d.dep_id)
+WHERE name = 'Engineering'
+AND hire_date = (SELECT MAX(hire_date)
+                 FROM employees e1
+                 WHERE e1.dep_id = e.dep_id);
+                 
+--not corelated subquery (can be executed independently)
+--SUBQERY
+SELECT MAX(hire_date)
+FROM employees e1 JOIN departments d1 ON (e1.dep_id = d1.dep_id)
+WHERE name = 'Engineering';
+
+--MAIN QUERY
+SELECT first_name, last_name, TO_CHAR(hire_date,'YYYY-MM-DD') "hired"
+FROM employees e JOIN departments d ON (e.dep_id = d.dep_id)
+WHERE name = 'Engineering'
+AND hire_date = (SELECT MAX(hire_date)
+                 FROM employees e1 JOIN departments d1 ON (e1.dep_id = d1.dep_id)
+                 WHERE name = 'Engineering');
+
+--Display last names of all employees who have been hired before their manager. 
+--Order result ascending by last name and descending by first name.
+
+SELECT emp.last_name
+FROM employees emp 
+JOIN employees man ON (emp.manager_id = man.emp_id)
+WHERE emp.hire_date < man.hire_date
+ORDER BY emp.last_name, emp.first_name DESC ;
+
+
+--For each employee display first name, last name, salary and name of the position. 
+--Order result descending by salary.
+
+SELECT first_name, last_name, salary, p.name
+FROM employees e
+JOIN positions p ON (e.pos_id= p.pos_id)
+ORDER BY salary DESC;
+
+
+--Display first name and last name of all senior specialists (position name 'Senior specialist') 
+--who earns more than any (at least one) manager (position name 'Manager').
+
+--SUBQUERY
+SELECT salary
+FROM employees e JOIN positions p ON (e.pos_id = p.pos_id)
+WHERE name = 'Manager';
+
+--MAIN QUERY
+SELECT first_name, last_name
+FROM employees e1 JOIN positions p1 ON (e1.pos_id = p1.pos_id)
+WHERE p1.name = 'Senior specialist'
+AND e1.salary > ANY (SELECT salary
+                     FROM employees e JOIN positions p ON (e.pos_id = p.pos_id)
+                     WHERE name = 'Manager'); 
+ 
+ 
+--For each department, display the name of the department and the number of staff employed in this department (give alias "Employee No."). 
+--Order the result descending by the Employee No.
+SELECT d.name, COUNT(e.emp_id) "Employee No."
+FROM departments d
+LEFT OUTER JOIN employees e ON d.dep_id = e.dep_id
+GROUP BY name
+ORDER BY "Employee No." DESC;
+
+
+--For each department, display the name of the department (give alias "Department name") and the number of staff employed in the department (give alias "Employee No.") 
+-- include also employees who are not assigned to the department (Assign for them the name "No department"). 
+-- Order the result decreasing by the number of the employees
+SELECT NVL(d.name,'No department')"Department name", COUNT(e.emp_id) "Employee No."
+FROM employees e
+LEFT OUTER JOIN departments d ON (e.dep_id = d.dep_id)
+GROUP BY d.name
+ORDER BY 2 DESC;
+
+
+--Display the name of the department(s) with the largest number of employees.
+SELECT d.name
+FROM departments d
+LEFT OUTER JOIN employees e ON d.dep_id = e.dep_id
+GROUP BY name
+HAVING COUNT(e.emp_id) = ( SELECT MAX (mycount)
+                         FROM 
+                            (SELECT COUNT(emp_id) mycount
+                             FROM employees
+                             GROUP BY dep_id))
+;
+
+--OR
+
+SELECT name, COUNT(e.emp_id)
+FROM employees e JOIN departments d ON (e.dep_id = d.dep_id)
+GROUP BY name;
+HAVING COUNT(e.emp_id) = (SELECT MAX(COUNT(e.emp_id))
+                          FROM employees e JOIN departments d ON (e.dep_id = d.dep_id)
+                          GROUP BY name);
+
+
+--For each department display name and maximum remuneration (remuneration is a sum of salary and allowance). 
+--Order result ascending by remuneration.
+SELECT name, MAX(salary + NVL(allowance,0)) "Remuneration"
+FROM departments d
+JOIN employees e ON d.dep_id = e.dep_id
+GROUP BY name
+ORDER BY 2;
+
+
+--Display last name, salary and department name of all employees who do not work in 'Operations' department 
+--and have salary lower than the salary of all employees from 'Operations' department.
+SELECT last_name, salary, name
+FROM employees e1
+JOIN departments d1 ON (e1.dep_id=d1.dep_id)
+WHERE name <> 'Operations'
+    AND salary < ALL (SELECT salary
+                        FROM employees e
+                        JOIN departments d ON (e.dep_id=d.dep_id)
+                        WHERE name = 'Operations');
+
+
+--Display names and locations of departments located in Offices with the number higher than 200. Order the result ascending by the location.
+SELECT name, location
+FROM departments
+WHERE TO_NUMBER(SUBSTR(location,8,LENGTH(location)-7)) > 200
+ORDER BY location;
+
+
+--For each employee with a salary lower than 4000 
+--display the last name and the five first letters of department name in lower case (give alias "dept").
+SELECT last_name, LOWER(SUBSTR(name,1,5)) "dept"
+FROM employees e
+JOIN departments d ON (e.dep_id=d.dep_id)
+WHERE salary <4000;
+
+
+--Display the name and hire date (in the format '21. 01. 2019' and give the alias 'employed')
+--for employees whose sum of salary and allowance is greater than 3500.
+--Sort the result in descending order by sum of salary and allowance.
+SELECT last_name, TO_CHAR(hire_date,'DD.MM.YYYY') "employed"
+FROM employees
+WHERE (salary+NVL(allowance,0)) > 3500
+ORDER BY (salary+NVL(allowance,0)) DESC;
+
+
+--Display the average remuneration (sum of salary and allowance) of employees hired before the year 2000, 
+--round the result to whole hundreds and give alias "average remuneration".
+SELECT ROUND(AVG(salary+NVL(allowance,0)),-2) "average remunaration"
+FROM employees
+WHERE TO_CHAR(hire_date,'YYYY') < 2000 ;
+
+
+--Display last name, hire date and position name of all employees who do not have position 'Specialist' 
+--and have been hired after hire date of all employees having position 'Specialist'.
+SELECT last_name, hire_date, name
+FROM employees e1
+JOIN positions p1 ON (e1.pos_id = p1.pos_id)
+WHERE name <> 'Specialist' 
+     AND hire_date > (SELECT MAX(hire_date)
+                      FROM employees e
+                      JOIN positions p ON (e.pos_id = p.pos_id)
+                      WHERE name = 'Specialist')  ;
+
+
+SELECT SUBSTR(first_name,1,1) || '.' || SUBSTR(last_name,1,1) || '.'  "initial"
+FROM employees
+WHERE allowance is NULL
+    AND TO_CHAR(hire_date,'YYYY') > 2000;
+    
+    
+--Display the concatenated first and last name (in 1 column with the alias"employee") and the date of the emoloyees's 20th anniversary, which is exactly 20 years after the hire date (given the alias "20th anniversary")
+--Display records only for employees who have a 20th anniversary in 2021
+--Format the anniversary daste to display as "2021,02,15")
+--Dort the result in ascendingorder by anniversary date
+SELECT first_name || ' ' || last_name "employee", TO_CHAR(ADD_MONTHS(hire_date,12*20),'YYYY,MM,DD')  "20th anniversary"
+FROM employees
+WHERE (TO_CHAR(hire_date,'YYYY')+20) = '2021'
+ORDER BY "20th anniversary";
+
+
+
+
+
